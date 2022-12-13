@@ -9,7 +9,7 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 env:
-  POETRY_VERSION: "1.2.2"
+  POETRY_VERSION: "1.3.1"
   PYTHON_VERSION: "3.10"
 jobs:
   build:
@@ -68,19 +68,15 @@ jobs:
           if [ "$BUMP_RC" = true ]; then
             poetry version prerelease
           else
-            poetry version ${GITHUB_REF#refs/heads/release/}-rc.1
+            poetry version ${GITHUB_REF#refs/heads/release/}rc1
           fi
           echo "software_version=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
       - name: Release version
         # If triggered by push to the main branch
         if: ${{ startsWith(github.ref, 'refs/heads/main') }}
         id: release
-        env:
-          CURRENT_VERSION: ${{ steps.get-version.outputs.current_version }}
-        # Remove -rc.* from end of version string
-        # The ${string%%substring} syntax below deletes the longest match of $substring from back of $string.
         run: |
-          poetry version ${CURRENT_VERSION%%-rc.*}
+          poetry version major
           echo "software_version=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
       - name: Install package
         run: poetry install
@@ -159,12 +155,12 @@ jobs:
         id: pypi-test-publish
         if: |
           contains(steps.get-version.outputs.current_version, 'rc')    ||
-          contains(steps.get-version.outputs.current_version, 'alpha')
+          contains(steps.get-version.outputs.current_version, 'a')
         env:
           POETRY_PYPI_TOKEN_TESTPYPI: ${{secrets.POETRY_PYPI_TOKEN_TESTPYPI}}
         run: |
           poetry config repositories.testpypi https://test.pypi.org/legacy/
-          poetry publish -r testpypi
+          poetry publish -r testpypi --build
           echo "PACKAGE=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
       - name: Publish to pypi.org
         id: pypi-publish
@@ -173,7 +169,7 @@ jobs:
         env:
           POETRY_PYPI_TOKEN_PYPI: ${{secrets.POETRY_PYPI_TOKEN_PYPI}}
         run: |
-          poetry publish
+          poetry publish --build
       - name: Log in to the Container registry
         uses: docker/login-action@v2
         with:
