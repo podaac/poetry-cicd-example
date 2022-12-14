@@ -11,6 +11,7 @@ on:
 env:
   POETRY_VERSION: "1.3.1"
   PYTHON_VERSION: "3.10"
+  REGISTRY: ghcr.io
 jobs:
   build:
     name: Build, Test, Scan, & Tag
@@ -133,6 +134,8 @@ jobs:
   publish:
     name: Publish Tag
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     # Only publish tags
     if: github.ref_type == 'tag'
     steps:
@@ -180,9 +183,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{env.pyproject_name}}
           tags: |
-            type=semver,pattern={{version}},value=${{ env.software_version }}
+            type=pep440,pattern={{version}}
       - name: Wait for package
         # Sometimes pypi can take a minute or two to list the new version in the index.
         # This step just waits until the package is available from pypi or test pypi
